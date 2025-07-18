@@ -1,50 +1,44 @@
 import mongoose from "mongoose";
 
+const testCaseSchema = new mongoose.Schema({
+  input: { type: String },
+  output: { type: String },
+  points: { type: Number },
+});
+
 const codingAssignmentSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
+  title: { type: String },
+  description: { type: String },
+
+  difficulty: { type: String },
+  assignment_type: { type: String },
+
+  languages_allowed: [{ type: String }],
+
+  starter_code: {
+    type: Map,
+    of: String,
   },
 
-  description: String,
-  constraints: String,
-  hint: String,
+  sample_tests: [testCaseSchema],
+  hidden_tests: [testCaseSchema],
 
-  starterCode: {
-    python: String,
-    javascript: String,
-    cpp: String,
-    java: String,
-  },
+  time_limit: { type: Number, default: 1 },
+  total_time_limit: { type: Number, default: 30 },
+  total_points: { type: Number, default: 100 },
+  memory_limit: { type: Number, default: 128 },
 
-  // Dynamic test cases with flexible inputs
-  testCases: [
-    {
-      input: {
-        type: String, // stringified input (can be array, matrix, etc.)
-        required: true,
-      },
-      expectedOutput: {
-        type: String,
-        required: true,
-      },
-      hidden: {
-        type: Boolean,
-        default: false,
-      },
-    }
-  ],
+  tags: [String],
 
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Teacher",
-    required: true,
   },
 
   createdAt: {
     type: Date,
     default: Date.now,
-  }
+  },
 });
 
 export default mongoose.model("CodingAssignment", codingAssignmentSchema);

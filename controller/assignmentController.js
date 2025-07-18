@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import CodingAssignment from "../model/codingAssignment.js"
 import dotenv from "dotenv";
 dotenv.config(); // Load .env variables
 
@@ -156,5 +157,83 @@ Hidden Test Cases: ${hiddenTestCount}`;
       error: true,
       reason: "Server error while generating assignment.",
     });
+  }
+};
+
+
+
+// Save coding assignment
+export const saveCodingAssignment = async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      difficulty,
+      assignment_type,
+      languages_allowed,
+      starter_code,
+      sample_tests,
+      hidden_tests,
+      time_limit,
+      total_time_limit,
+      total_points,
+      memory_limit,
+      tags,
+      createdBy,
+    } = req.body;
+
+    // Construct assignment object
+    const assignmentData = {
+      title: title || "",
+      description: description || "",
+      difficulty: difficulty || "",
+      assignment_type: assignment_type || "",
+      languages_allowed: Array.isArray(languages_allowed) ? languages_allowed : [],
+      starter_code: typeof starter_code === "object" ? starter_code : {},
+      sample_tests: Array.isArray(sample_tests) ? sample_tests : [],
+      hidden_tests: Array.isArray(hidden_tests) ? hidden_tests : [],
+      time_limit: time_limit || 1,
+      total_time_limit: total_time_limit || 30,
+      total_points: total_points || 100,
+      memory_limit: memory_limit || 128,
+      tags: Array.isArray(tags) ? tags : [],
+      createdBy: createdBy || undefined, // only if you're passing this
+    };
+
+    const newAssignment = new CodingAssignment(assignmentData);
+    const saved = await newAssignment.save();
+
+    return res.status(201).json(saved);
+  } catch (error) {
+    console.error("❌ Error saving assignment:", error);
+    return res.status(500).json({ error: true, message: "Failed to save assignment." });
+  }
+};
+
+// Get all coding assignments
+export const getAllCodingAssignments = async (req, res) => {
+  try {
+    const assignments = await CodingAssignment.find().sort({ createdAt: -1 });
+    return res.json(assignments);
+  } catch (error) {
+    console.error("❌ Error fetching assignments:", error);
+    return res.status(500).json({ error: true, message: "Failed to fetch assignments." });
+  }
+};
+
+// Get a single assignment by ID
+export const getSingleCodingAssignment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const assignment = await CodingAssignment.findById(id);
+
+    if (!assignment) {
+      return res.status(404).json({ error: true, message: "Assignment not found." });
+    }
+
+    return res.json(assignment);
+  } catch (error) {
+    console.error("❌ Error fetching single assignment:", error);
+    return res.status(500).json({ error: true, message: "Failed to fetch assignment." });
   }
 };
