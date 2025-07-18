@@ -3,7 +3,6 @@ import CodingAssignment from "../model/codingAssignment.js"
 import dotenv from "dotenv";
 dotenv.config(); // Load .env variables
 
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // You should set this in your .env file
 });
@@ -17,6 +16,8 @@ export const generateCodingAssignment = async (req, res) => {
       languagesAllowed,
       sampleTestCount,
       hiddenTestCount,
+      timeLimit,
+      totalPoints,
     } = req.body;
 
     // Build the universal prompt for OpenAI
@@ -25,14 +26,21 @@ You are an expert coding assignment generator.
 
 I will give you:
 1. A short freeform description of what the teacher wants
-2. Difficulty level (Easy, Medium, Hard)
+2. Difficulty level (Beginner, Intermediate, Advanced)
 3. Assignment type (function, full_program, algorithm_challenge, real_world_problem, debugging_task, refactoring_task, test_case_creation, api_task)
 4. Programming languages allowed
 5. Number of sample test cases (visible to students)
 6. Number of hidden test cases (used for evaluation)
+7. Total time limit (seconds)
+8. Total points (visible to students)
 
 Your task:
 - Try to generate exactly ONE valid assignment.
+- **Compute points_per_test = total_points ÷ (sample_tests + hidden_tests) and assign that points value to every single test (sample and hidden).**
+  - e.g., if total_points = 100, sample_tests = 2, hidden_tests = 2, then each test must have "points": 25.
+- Include a **points** field on each test case object.
+- Divide the total points evenly across all test cases (both sample and hidden).
+- Include a **points** field on each test case object.
 - If you can generate it, return a JSON object with the following fields:
   - title (short descriptive name)
   - description (clear explanation of the problem)
@@ -40,9 +48,11 @@ Your task:
   - assignment_type (must match the provided type)
   - languages_allowed (must match the provided list)
   - starter_code (must be an object with each allowed language as a key)
-  - sample_tests (exactly the requested number, visible to students)
-  - hidden_tests (exactly the requested number, for evaluation)
+  - sample_tests (exactly the requested number, visible to students; **each** test must include input, output, and points)
+  - hidden_tests (exactly the requested number, for evaluation; **each** test must include input, output, and points)
   - time_limit (default: Easy=1s, Medium=2s, Hard=3s)
+  - total_time_limit (exactly the requested number, visible to students)
+  - total_points (exactly the requested number, visible to students)
   - memory_limit (default: Easy=128MB, Medium=256MB, Hard=512MB)
   - tags (array of relevant topics)
 
@@ -77,6 +87,8 @@ Do NOT return any text outside of JSON.
 Difficulty: ${difficulty}
 Assignment Type: ${assignmentType}
 Languages Allowed: ${JSON.stringify(languagesAllowed)}
+total_time_limit: ${timeLimit}
+total_points: ${totalPoints}
 Sample Test Cases: ${sampleTestCount}
 Hidden Test Cases: ${hiddenTestCount}`;
 
@@ -93,6 +105,7 @@ Hidden Test Cases: ${hiddenTestCount}`;
     let aiResponse = completion.choices[0].message.content;
 
     // Try parsing the JSON response
+    console.log(aiResponse);
     let jsonResponse;
     try {
       jsonResponse = JSON.parse(aiResponse);
