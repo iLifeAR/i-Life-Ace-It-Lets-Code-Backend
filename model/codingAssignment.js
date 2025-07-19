@@ -30,7 +30,11 @@ const codingAssignmentSchema = new mongoose.Schema({
   memory_limit: { type: Number, default: 128 },
   learningObjectives: [{ type: String }],
   tags: [String],
-    requirements: [{ type: String }], // Bullet point list of key requirements
+  requirements: [{ type: String }], // Bullet point list of key requirements
+  plagiarismCheck: { type: Boolean, default: false },
+  allowMultipleAttempts: { type: Boolean, default: false },
+  showHints: { type: Boolean, default: false },
+  isCompleted: { type: Boolean, default: false }, // ✅ newly added
   examples: [
   {
     input: { type: String },

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import CodingAssignment from "../model/codingAssignment.js"
+import CodingAssignment from "../model/codingAssignment.js";
 import dotenv from "dotenv";
 dotenv.config(); // Load .env variables
 
@@ -160,8 +160,6 @@ const openai = new OpenAI({
 //   }
 // };
 
-
-
 // Save coding assignment
 
 export const generateCodingAssignment = async (req, res) => {
@@ -178,7 +176,14 @@ export const generateCodingAssignment = async (req, res) => {
     } = req.body;
 
     const ALL_LANGUAGES = [
-      "Python", "JavaScript", "Java", "C++", "Go", "C#", "Rust", "C"
+      "Python",
+      "JavaScript",
+      "Java",
+      "C++",
+      "Go",
+      "C#",
+      "Rust",
+      "C",
     ];
 
     const systemPrompt = `
@@ -204,7 +209,9 @@ Your task:
   - difficulty
   - assignment_type
   - languages_allowed
-  - starter_code: one valid code snippet for EACH language in this list: ${JSON.stringify(ALL_LANGUAGES)}
+  - starter_code: one valid code snippet for EACH language in this list: ${JSON.stringify(
+    ALL_LANGUAGES
+  )}
   - sample_tests (EXACTLY the requested number)
   - hidden_tests (EXACTLY the requested number)
   - time_limit
@@ -282,9 +289,9 @@ Make sure:
       "memory_limit",
       "tags",
       "learningObjectives",
-      "requirements",   // ✅ newly required
-      "examples",       // ✅ newly required
-      "hints",          // ✅ newly required
+      "requirements", // ✅ newly required
+      "examples", // ✅ newly required
+      "hints", // ✅ newly required
     ];
 
     const hasAllFields = requiredFields.every((field) =>
@@ -321,10 +328,6 @@ Expected ${sampleTestCount} sample_tests and ${hiddenTestCount} hidden_tests.`,
   }
 };
 
-
-
-
-
 export const saveCodingAssignment = async (req, res) => {
   try {
     const {
@@ -344,9 +347,13 @@ export const saveCodingAssignment = async (req, res) => {
       tags,
       learningObjectives, // ✅ added here
       createdBy,
-      requirements,  // ✅ newly added
-      examples,      // ✅ newly added
-      hints,         // ✅ newly added
+      requirements, // ✅ newly added
+      examples, // ✅ newly added
+      hints,
+      plagiarismCheck, // ✅ newly added
+      allowMultipleAttempts, // ✅ newly added
+      showHints, // ✅ newly added
+      isCompleted, // ✅ newly added
     } = req.body;
 
     const assignmentData = {
@@ -354,7 +361,9 @@ export const saveCodingAssignment = async (req, res) => {
       description: description || "",
       difficulty: difficulty || "",
       assignment_type: assignment_type || "",
-      languages_allowed: Array.isArray(languages_allowed) ? languages_allowed : [],
+      languages_allowed: Array.isArray(languages_allowed)
+        ? languages_allowed
+        : [],
       all_languages: Array.isArray(all_languages) ? all_languages : [],
       starter_code: typeof starter_code === "object" ? starter_code : {},
       sample_tests: Array.isArray(sample_tests) ? sample_tests : [],
@@ -364,10 +373,16 @@ export const saveCodingAssignment = async (req, res) => {
       total_points: total_points || 100,
       memory_limit: memory_limit || 128,
       tags: Array.isArray(tags) ? tags : [],
-      learningObjectives: Array.isArray(learningObjectives) ? learningObjectives : [], // ✅ added here
+      learningObjectives: Array.isArray(learningObjectives)
+        ? learningObjectives
+        : [], // ✅ added here
       requirements: Array.isArray(requirements) ? requirements : [], // Bullet point list of key requirements
-      examples: Array.isArray(examples) ? examples : [],     // One or more example
-      hints: Array.isArray(hints) ? hints : [],        // Optional hints to help students
+      plagiarismCheck: plagiarismCheck || false,
+      allowMultipleAttempts: allowMultipleAttempts || false,
+      showHints: showHints || false,
+      examples: Array.isArray(examples) ? examples : [], // One or more example
+      hints: Array.isArray(hints) ? hints : [], // Optional hints to help students
+      isCompleted: isCompleted || false, // ✅ newly added
       createdBy: createdBy || undefined,
     };
 
@@ -377,11 +392,11 @@ export const saveCodingAssignment = async (req, res) => {
     return res.status(201).json(saved);
   } catch (error) {
     console.error("❌ Error saving assignment:", error);
-    return res.status(500).json({ error: true, message: "Failed to save assignment." });
+    return res
+      .status(500)
+      .json({ error: true, message: "Failed to save assignment." });
   }
 };
-
-
 
 // Get all coding assignments
 export const getAllCodingAssignments = async (req, res) => {
@@ -390,7 +405,9 @@ export const getAllCodingAssignments = async (req, res) => {
     return res.json(assignments);
   } catch (error) {
     console.error("❌ Error fetching assignments:", error);
-    return res.status(500).json({ error: true, message: "Failed to fetch assignments." });
+    return res
+      .status(500)
+      .json({ error: true, message: "Failed to fetch assignments." });
   }
 };
 
@@ -401,12 +418,16 @@ export const getSingleCodingAssignment = async (req, res) => {
     const assignment = await CodingAssignment.findById(id);
 
     if (!assignment) {
-      return res.status(404).json({ error: true, message: "Assignment not found." });
+      return res
+        .status(404)
+        .json({ error: true, message: "Assignment not found." });
     }
 
     return res.json(assignment);
   } catch (error) {
     console.error("❌ Error fetching single assignment:", error);
-    return res.status(500).json({ error: true, message: "Failed to fetch assignment." });
+    return res
+      .status(500)
+      .json({ error: true, message: "Failed to fetch assignment." });
   }
 };
