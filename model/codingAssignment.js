@@ -14,6 +14,7 @@ const codingAssignmentSchema = new mongoose.Schema({
   assignment_type: { type: String },
 
   languages_allowed: [{ type: String }],
+  all_languages: [{ type: String }], // ✅ New field added here
 
   starter_code: {
     type: Map,
@@ -27,8 +28,18 @@ const codingAssignmentSchema = new mongoose.Schema({
   total_time_limit: { type: Number, default: 30 },
   total_points: { type: Number, default: 100 },
   memory_limit: { type: Number, default: 128 },
-
+  learningObjectives: [{ type: String }],
   tags: [String],
+    requirements: [{ type: String }], // Bullet point list of key requirements
+  examples: [
+  {
+    input: { type: String },
+    output: { type: String },
+  },
+],
+
+  hints: [{ type: String }],        // Optional hints to help students
+
 
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
