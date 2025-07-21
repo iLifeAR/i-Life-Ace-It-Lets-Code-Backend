@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './config/db.js';
 import assignmentRoutes from './routes/assignmentRoutes.js'
+import practiseRoutes from './routes/practiseRoutes.js'
 
 dotenv.config();
 connectDB();
@@ -17,6 +18,7 @@ app.use(cors());
 
 // Routes
 app.use('/api/assignment', assignmentRoutes);
+app.use('/api/practise', practiseRoutes);
 
 
 
