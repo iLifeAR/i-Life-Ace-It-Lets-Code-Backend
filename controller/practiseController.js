@@ -1,9 +1,11 @@
 // Get all coding assignments
-import PractiseAssignment from "../model/codingAssignment.js";
+import PractiseAssignment from "../model/practiseAssignment.js";
 
 export const getAllPractiseAssignments = async (req, res) => {
   try {
     const assignments = await PractiseAssignment.find().sort({ createdAt: -1 });
+    console.log(assignments);
+    
     return res.json(assignments);
   } catch (error) {
     console.error("❌ Error fetching assignments:", error);
