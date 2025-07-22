@@ -23,7 +23,7 @@ const codingAssignmentSchema = new mongoose.Schema({
 
   sample_tests: [testCaseSchema],
   hidden_tests: [testCaseSchema],
-
+  inputShape: { type: String, default: "array" }, // New field to define input structure
   time_limit: { type: Number, default: 1 },
   total_time_limit: { type: Number, default: 30 },
   total_points: { type: Number, default: 100 },
