@@ -1,8 +1,6 @@
 import OpenAI from "openai";
 import CodingAssignment from "../model/codingAssignment.js";
 import dotenv from "dotenv";
-import axios from "axios";
-
 dotenv.config(); // Load .env variables
 
 const openai = new OpenAI({
@@ -331,7 +329,7 @@ const openai = new OpenAI({
 // };
 
 
-export const generateCodingAssignment = async (req, res) => {
+export const generateCodingAssignment = async (req, res) => { 
   try {
     const {
       prompt,
@@ -375,6 +373,7 @@ Your task:
 - The function name MUST be exactly solve — no variations — in every language (Python, Java, C++, etc).
 - Starter code in each language must define a function or method named solve that matches the expected input and output.
 
+
 INPUT & OUTPUT CONTRACT:
 - Based on the prompt, you must infer the correct input type: array, 2D array, number, string, linked list, tree, object, or none.
 - Input will be passed as a parsed JSON-compatible value.
@@ -384,7 +383,6 @@ INPUT & OUTPUT CONTRACT:
 - The returned value will be automatically serialized (e.g., listToArray for ListNode, etc.).
 
 Return the result in this exact JSON format (include "inferred_input_shape" to indicate what input type you inferred):
-
 {
   "title": "",
   "description": "",
@@ -392,16 +390,6 @@ Return the result in this exact JSON format (include "inferred_input_shape" to i
   "assignment_type": "",
   "languages_allowed": ${JSON.stringify(languagesAllowed)},
   "starter_code": { "Python": "...", "JavaScript": "...", ... },
-  "language_wrappers": {
-    "Python": "...",
-    "JavaScript": "...",
-    "Java": "...",
-    "C++": "...",
-    "Go": "...",
-    "C#": "...",
-    "Rust": "...",
-    "C": "..."
-  },
   "sample_tests": [ { "input": "...", "output": "...", "points": ... } ],
   "hidden_tests": [ { "input": "...", "output": "...", "points": ... } ],
   "time_limit": ${timeLimit},
@@ -415,26 +403,9 @@ Return the result in this exact JSON format (include "inferred_input_shape" to i
   "hints": [],
   "inferred_input_shape": ""
 }
-
-- First, infer the input shape and expected return type from the prompt, then generate:
-  - A single unified input shape string (e.g., "array", "2d_array", "string", "tree_array", "linked_list_array", "object", etc.) in the field "inferred_input_shape"
-  - Sample and hidden test cases based on the inferred shape
-  - Starter code for each language listed in "languages_allowed" using a function called solve(input)
-- Then, for each language, dynamically generate a wrapper using the following format:
-
-Each wrapper must:
-  - Contain exactly two placeholders: "{{code}}" and "{{input}}"
-  - The AI must NOT hardcode the function implementation inside the wrapper
-  - "{{code}}" will be replaced with the student's code (e.g., the solve function)
-  - "{{input}}" will be replaced with the actual test case input as a string (JSON format)
-  - The wrapper must:
-    - Parse "{{input}}" into a native structure (array, int, object, etc.)
-    - Call the "solve(...)" function with the parsed input
-    - Print or return the result correctly (without additional logging)
-    - Match the input/output signature of the generated starter_code
-    - Not use stdin, command-line args, or user input (e.g., no "input()", "scanf", "cin", "Scanner", etc.)
-    - Not print debug output, logging, or wrapper-only messages
-
+- Compute points_per_test = total_points / (sample + hidden)
+- Ensure all inputs and outputs match the expected function signature
+- Validate all sample and hidden tests with the logic in starter_code
 `.trim();
 
     const userPrompt = `Prompt: ${prompt}
@@ -485,7 +456,6 @@ Total Points: ${totalPoints}
       "assignment_type",
       "languages_allowed",
       "starter_code",
-      "language_wrappers", // ✅ required now
       "sample_tests",
       "hidden_tests",
       "time_limit",
@@ -520,7 +490,6 @@ Expected ${sampleTestCount} sample_tests and ${hiddenTestCount} hidden_tests.`,
     }
 
     jsonResponse.all_languages = ALL_LANGUAGES;
-    console.log(jsonResponse);
 
     return res.json(jsonResponse);
   } catch (err) {
@@ -533,9 +502,6 @@ Expected ${sampleTestCount} sample_tests and ${hiddenTestCount} hidden_tests.`,
 };
 
 
-
-
-
 export const saveCodingAssignment = async (req, res) => {
   try {
     const {
@@ -546,7 +512,6 @@ export const saveCodingAssignment = async (req, res) => {
       languages_allowed,
       all_languages,
       starter_code,
-      language_wrappers,
       sample_tests,
       hidden_tests,
       time_limit,
@@ -571,10 +536,11 @@ export const saveCodingAssignment = async (req, res) => {
       description: description || "",
       difficulty: difficulty || "",
       assignment_type: assignment_type || "",
-      languages_allowed: Array.isArray(languages_allowed) ? languages_allowed : [],
+      languages_allowed: Array.isArray(languages_allowed)
+        ? languages_allowed
+        : [],
       all_languages: Array.isArray(all_languages) ? all_languages : [],
       starter_code: typeof starter_code === "object" ? starter_code : {},
-      language_wrappers: typeof language_wrappers === "object" ? language_wrappers : {},
       sample_tests: Array.isArray(sample_tests) ? sample_tests : [],
       hidden_tests: Array.isArray(hidden_tests) ? hidden_tests : [],
       time_limit: time_limit || 1,
@@ -582,7 +548,9 @@ export const saveCodingAssignment = async (req, res) => {
       total_points: total_points || 100,
       memory_limit: memory_limit || 128,
       tags: Array.isArray(tags) ? tags : [],
-      learningObjectives: Array.isArray(learningObjectives) ? learningObjectives : [],
+      learningObjectives: Array.isArray(learningObjectives)
+        ? learningObjectives
+        : [],
       requirements: Array.isArray(requirements) ? requirements : [],
       plagiarismCheck: plagiarismCheck || false,
       allowMultipleAttempts: allowMultipleAttempts || false,
@@ -593,6 +561,7 @@ export const saveCodingAssignment = async (req, res) => {
       hints: Array.isArray(hints) ? hints : [],
     };
 
+    // ✅ Transform examples to proper format if they are strings
     if (Array.isArray(examples)) {
       assignmentData.examples = examples.map((ex) => {
         if (typeof ex === "string") {
@@ -602,136 +571,23 @@ export const saveCodingAssignment = async (req, res) => {
             output: parts[1]?.trim() || "",
           };
         }
-        return ex;
+        return ex; // already in correct object format
       });
     } else {
       assignmentData.examples = [];
     }
 
-    // ✅ Internal function to test and fix wrappers
-    const validateAndFixWrappers = async () => {
-      const failures = [];
-      const test = sample_tests?.[0];
-      const langMap = {
-        Python: "python3",
-        JavaScript: "javascript",
-        Java: "java",
-        "C++": "cpp",
-        Go: "go",
-        "C#": "csharp",
-        Rust: "rust",
-        C: "c",
-      };
-
-      for (const lang of languages_allowed) {
-        const wrapper = language_wrappers[lang];
-        const code = starter_code[lang];
-        const pistonLang = langMap[lang];
-
-        if (!wrapper || !code || !test || !pistonLang) {
-          console.log(`⚠️ Skipping ${lang}: Missing wrapper, code, test, or unsupported language`);
-          continue;
-        }
-
-        const testCode = wrapper
-          .replace("{{code}}", code)
-          .replace("{{input}}", JSON.stringify(test.input));
-
-        console.log(`🧪 Testing ${lang} wrapper...`);
-
-        try {
-          const result = await axios.post("https://emkc.org/api/v2/piston/execute", {
-            language: pistonLang,
-            source: testCode,
-          });
-
-          const output = result.data.output?.trim() || result.data.run?.output?.trim() || "";
-          const expected = test.output?.toString().trim();
-
-          if (!output || output !== expected) {
-            console.log(`❌ ${lang} wrapper failed.`);
-            console.log(`   🔸 Input: ${JSON.stringify(test.input)}`);
-            console.log(`   🔸 Expected: ${expected}`);
-            console.log(`   🔸 Actual: ${output}`);
-            failures.push({ lang, code, input: test.input, expected, actual: output });
-          } else {
-            console.log(`✅ ${lang} wrapper passed.`);
-          }
-        } catch (err) {
-          console.log(`❌ ${lang} execution error: ${err.message}`);
-          failures.push({ lang, code, input: test.input, expected: test.output, actual: err.message });
-        }
-      }
-
-      // 🔁 Fix broken wrappers using GPT
-      for (const fail of failures) {
-        console.log(`🔁 Regenerating wrapper for ${fail.lang} using GPT...`);
-
-        const gptPrompt = `
-The wrapper for ${fail.lang} did not work correctly.
-Please regenerate ONLY the wrapper using {{code}} and {{input}}.
-Use the following:
-
-Starter Code:
-${fail.code}
-
-Test Input (JSON):
-${JSON.stringify(fail.input)}
-
-Expected Output:
-${fail.expected}
-
-Actual Output:
-${fail.actual}
-
-Return ONLY:
-{
-  "language": "${fail.lang}",
-  "wrapper": "..."
-}
-        `.trim();
-
-        const response = await openai.createChatCompletion({
-          model: "gpt-4o",
-          messages: [
-            { role: "system", content: "You are a language wrapper generator for code execution." },
-            { role: "user", content: gptPrompt },
-          ],
-          temperature: 0,
-        });
-
-        const content = response.data.choices[0].message.content.trim();
-        const fixed = JSON.parse(content);
-
-        if (fixed.language && fixed.wrapper) {
-          console.log(`✅ Wrapper for ${fixed.language} updated successfully.`);
-          language_wrappers[fixed.language] = fixed.wrapper;
-        } else {
-          console.log(`❌ GPT failed to fix wrapper for ${fail.lang}`);
-        }
-      }
-    };
-
-    console.log("🔍 Starting wrapper validation...");
-    await validateAndFixWrappers();
-    console.log("✅ Wrapper validation complete. Saving assignment...");
-
-    const newAssignment = new CodingAssignment({
-      ...assignmentData,
-      language_wrappers,
-    });
-
+    const newAssignment = new CodingAssignment(assignmentData);
     const saved = await newAssignment.save();
 
-    console.log("✅ Assignment saved to DB.");
     return res.status(201).json(saved);
   } catch (error) {
     console.error("❌ Error saving assignment:", error);
-    return res.status(500).json({ error: true, message: "Failed to save assignment." });
+    return res
+      .status(500)
+      .json({ error: true, message: "Failed to save assignment." });
   }
 };
-
-
 
 
 // Get all coding assignments
