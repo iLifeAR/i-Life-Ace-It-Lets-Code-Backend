@@ -328,8 +328,178 @@ const openai = new OpenAI({
 //   }
 // };
 
+// export const generateCodingAssignment = async (req, res) => {
+//   try {
+//     const {
+//       prompt,
+//       difficulty,
+//       assignmentType,
+//       languagesAllowed,
+//       sampleTestCount,
+//       hiddenTestCount,
+//       timeLimit,
+//       totalPoints,
+//     } = req.body;
 
-export const generateCodingAssignment = async (req, res) => { 
+//     const ALL_LANGUAGES = [
+//       "Python",
+//       "JavaScript",
+//       "Java",
+//       "C++",
+//       "Go",
+//       "C#",
+//       "Rust",
+//       "C",
+//     ];
+
+//     const systemPrompt = `
+// You are an expert coding assignment generator.
+
+// You will be given:
+// 1. A short freeform description of what the teacher wants
+// 2. Difficulty level (Beginner, Intermediate, Advanced)
+// 3. Assignment type (function, full_program, algorithm_challenge, real_world_problem, debugging_task, refactoring_task, test_case_creation, api_task)
+// 4. Programming languages allowed
+// 5. Number of sample test cases (visible to students)
+// 6. Number of hidden test cases (used for evaluation)
+// 7. Total time limit (seconds)
+// 8. Total points (visible to students)
+
+// Your task:
+// - Generate exactly ONE valid coding assignment as a JSON object.
+// - Do NOT include markdown or code blocks. Only return a raw JSON object.
+// - Use function-style solutions only. No input(), console.log, or stdin usage.
+// - The function name MUST be exactly solve — no variations — in every language (Python, Java, C++, etc).
+// - Starter code in each language must define a function or method named solve that matches the expected input and output.
+
+// INPUT & OUTPUT CONTRACT:
+// - Based on the prompt, you must infer the correct input type: array, 2D array, number, string, linked list, tree, object, or none.
+// - Input will be passed as a parsed JSON-compatible value.
+// - If the input is a tree or linked list, assume globally defined classes (TreeNode or ListNode) exist.
+// - The function should accept exactly one argument based on the detected input structure.
+// - The function must return the result, not print it.
+// - The returned value will be automatically serialized (e.g., listToArray for ListNode, etc.).
+
+// Return the result in this exact JSON format (include "inferred_input_shape" to indicate what input type you inferred):
+// {
+//   "title": "",
+//   "description": "",
+//   "difficulty": "",
+//   "assignment_type": "",
+//   "languages_allowed": ${JSON.stringify(languagesAllowed)},
+//   "starter_code": { "Python": "...", "JavaScript": "...", ... },
+//   "sample_tests": [ { "input": "...", "output": "...", "points": ... } ],
+//   "hidden_tests": [ { "input": "...", "output": "...", "points": ... } ],
+//   "time_limit": ${timeLimit},
+//   "total_time_limit": ${timeLimit},
+//   "total_points": ${totalPoints},
+//   "memory_limit": 128,
+//   "tags": [],
+//   "learningObjectives": [],
+//   "requirements": [],
+//   "examples": [],
+//   "hints": [],
+//   "inferred_input_shape": ""
+// }
+// - Compute points_per_test = total_points / (sample + hidden)
+// - Ensure all inputs and outputs match the expected function signature
+// - Validate all sample and hidden tests with the logic in starter_code
+// `.trim();
+
+//     const userPrompt = `Prompt: ${prompt}
+// Difficulty: ${difficulty}
+// Assignment Type: ${assignmentType}
+// Languages Allowed: ${JSON.stringify(languagesAllowed)}
+// Sample Test Cases: ${sampleTestCount}
+// Hidden Test Cases: ${hiddenTestCount}
+// Total Time Limit: ${timeLimit}
+// Total Points: ${totalPoints}
+// `;
+
+//     const completion = await openai.chat.completions.create({
+//       model: "gpt-4o",
+//       messages: [
+//         { role: "system", content: systemPrompt },
+//         { role: "user", content: userPrompt },
+//       ],
+//       temperature: 0.3,
+//     });
+
+//     let aiResponse = completion.choices[0].message.content.trim();
+
+//     // Remove accidental markdown formatting
+//     if (aiResponse.startsWith("```json") || aiResponse.startsWith("```")) {
+//       aiResponse = aiResponse.replace(/```json|```/g, "").trim();
+//     }
+
+//     let jsonResponse;
+//     try {
+//       jsonResponse = JSON.parse(aiResponse);
+//     } catch (err) {
+//       return res.status(500).json({
+//         error: true,
+//         reason: "AI response was not valid JSON. Please try again.",
+//         raw: aiResponse,
+//       });
+//     }
+
+//     if (jsonResponse.error) {
+//       return res.status(400).json(jsonResponse);
+//     }
+
+//     const requiredFields = [
+//       "title",
+//       "description",
+//       "difficulty",
+//       "assignment_type",
+//       "languages_allowed",
+//       "starter_code",
+//       "sample_tests",
+//       "hidden_tests",
+//       "time_limit",
+//       "memory_limit",
+//       "tags",
+//       "learningObjectives",
+//       "requirements",
+//       "examples",
+//       "hints",
+//       "inferred_input_shape", // ✅ Required
+//     ];
+
+//     const hasAllFields = requiredFields.every((field) =>
+//       Object.prototype.hasOwnProperty.call(jsonResponse, field)
+//     );
+
+//     const sampleTestsValid =
+//       Array.isArray(jsonResponse.sample_tests) &&
+//       jsonResponse.sample_tests.length === sampleTestCount;
+
+//     const hiddenTestsValid =
+//       Array.isArray(jsonResponse.hidden_tests) &&
+//       jsonResponse.hidden_tests.length === hiddenTestCount;
+
+//     if (!hasAllFields || !sampleTestsValid || !hiddenTestsValid) {
+//       return res.status(500).json({
+//         error: true,
+//         reason: `AI response missing required fields or incorrect test case count.
+// Expected ${sampleTestCount} sample_tests and ${hiddenTestCount} hidden_tests.`,
+//         raw: jsonResponse,
+//       });
+//     }
+
+//     jsonResponse.all_languages = ALL_LANGUAGES;
+
+//     return res.json(jsonResponse);
+//   } catch (err) {
+//     console.error("❌ Error generating assignment:", err);
+//     return res.status(500).json({
+//       error: true,
+//       reason: "Server error while generating assignment.",
+//     });
+//   }
+// };
+
+export const generateCodingAssignment = async (req, res) => {
   try {
     const {
       prompt,
@@ -373,7 +543,6 @@ Your task:
 - The function name MUST be exactly solve — no variations — in every language (Python, Java, C++, etc).
 - Starter code in each language must define a function or method named solve that matches the expected input and output.
 
-
 INPUT & OUTPUT CONTRACT:
 - Based on the prompt, you must infer the correct input type: array, 2D array, number, string, linked list, tree, object, or none.
 - Input will be passed as a parsed JSON-compatible value.
@@ -390,6 +559,7 @@ Return the result in this exact JSON format (include "inferred_input_shape" to i
   "assignment_type": "",
   "languages_allowed": ${JSON.stringify(languagesAllowed)},
   "starter_code": { "Python": "...", "JavaScript": "...", ... },
+  "runnable_code": { "Python": "...", "JavaScript": "...", ... },
   "sample_tests": [ { "input": "...", "output": "...", "points": ... } ],
   "hidden_tests": [ { "input": "...", "output": "...", "points": ... } ],
   "time_limit": ${timeLimit},
@@ -403,9 +573,18 @@ Return the result in this exact JSON format (include "inferred_input_shape" to i
   "hints": [],
   "inferred_input_shape": ""
 }
-- Compute points_per_test = total_points / (sample + hidden)
-- Ensure all inputs and outputs match the expected function signature
-- Validate all sample and hidden tests with the logic in starter_code
+
+Instructions for runnable_code:
+- For every language in languages_allowed:
+  - Create full runnable code that includes:
+    - The solve function implementation (same as in starter_code)
+    - A main function or equivalent that:
+      - Parses the first sample test case input (use raw JSON input string directly)
+      - Passes the parsed input to solve
+      - Prints the result only — no explanation or logging
+  - Include helper classes if needed (e.g., ListNode, TreeNode)
+  - Must be executable in standard online compiler for that language
+  - DO NOT include markdown or triple backticks
 `.trim();
 
     const userPrompt = `Prompt: ${prompt}
@@ -456,6 +635,7 @@ Total Points: ${totalPoints}
       "assignment_type",
       "languages_allowed",
       "starter_code",
+      "runnable_code", // ✅ required now
       "sample_tests",
       "hidden_tests",
       "time_limit",
@@ -465,7 +645,7 @@ Total Points: ${totalPoints}
       "requirements",
       "examples",
       "hints",
-      "inferred_input_shape", // ✅ Required
+      "inferred_input_shape",
     ];
 
     const hasAllFields = requiredFields.every((field) =>
@@ -501,7 +681,6 @@ Expected ${sampleTestCount} sample_tests and ${hiddenTestCount} hidden_tests.`,
   }
 };
 
-
 export const saveCodingAssignment = async (req, res) => {
   try {
     const {
@@ -513,6 +692,7 @@ export const saveCodingAssignment = async (req, res) => {
       all_languages,
       starter_code,
       sample_tests,
+      runnable_code,
       hidden_tests,
       time_limit,
       total_time_limit,
@@ -554,6 +734,10 @@ export const saveCodingAssignment = async (req, res) => {
       requirements: Array.isArray(requirements) ? requirements : [],
       plagiarismCheck: plagiarismCheck || false,
       allowMultipleAttempts: allowMultipleAttempts || false,
+      runnable_code:
+        typeof runnable_code === "object" && !Array.isArray(runnable_code)
+          ? runnable_code
+          : {},
       showHints: showHints || false,
       isCompleted: isCompleted || false,
       inputShape: inputShape || "array",
@@ -588,7 +772,6 @@ export const saveCodingAssignment = async (req, res) => {
       .json({ error: true, message: "Failed to save assignment." });
   }
 };
-
 
 // Get all coding assignments
 export const getAllCodingAssignments = async (req, res) => {

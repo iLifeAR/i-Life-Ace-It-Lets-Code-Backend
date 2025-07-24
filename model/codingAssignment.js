@@ -21,6 +21,10 @@ const codingAssignmentSchema = new mongoose.Schema({
     of: String,
   },
 
+  runnable_code: {
+    type: Map,
+    of: String,
+  },
   language_wrappers: {
     type: Map,
     of: String,
