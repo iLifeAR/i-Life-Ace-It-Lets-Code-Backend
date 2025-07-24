@@ -576,15 +576,21 @@ Return the result in this exact JSON format (include "inferred_input_shape" to i
 
 Instructions for runnable_code:
 - For every language in languages_allowed:
-  - Create full runnable code that includes:
-    - The solve function implementation (same as in starter_code)
-    - A main function or equivalent that:
-      - Parses the first sample test case input (use raw JSON input string directly)
-      - Passes the parsed input to solve
-      - Prints the result only — no explanation or logging
-  - Include helper classes if needed (e.g., ListNode, TreeNode)
-  - Must be executable in standard online compiler for that language
-  - DO NOT include markdown or triple backticks
+-   Create runnable code that contains:
+-     - A placeholder for {{code}} where the user's solution will be inserted
+-     - A test runner that:
+-         - Parses input using the first sample test case
+-         - Calls solve(...)
+-         - Prints the result
+-   Do NOT implement the solve function. Do NOT include any actual solution.
+-   {{code}} will be replaced with student-written code at runtime.
++   The solve function itself should NOT appear in the runnable_code.
++   Instead, include a {{code}} placeholder exactly where the solve() function should go.
++   This placeholder will be replaced dynamically by the student's solution.
++   Example (JavaScript):
++     {{code}}
++     const input = [[1,2], [3,4]];
++     console.log(solve(input));
 `.trim();
 
     const userPrompt = `Prompt: ${prompt}
