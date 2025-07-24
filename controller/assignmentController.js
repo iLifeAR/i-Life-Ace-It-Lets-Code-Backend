@@ -542,6 +542,7 @@ Your task:
 - Use function-style solutions only. No input(), console.log, or stdin usage.
 - The function name MUST be exactly solve — no variations — in every language (Python, Java, C++, etc).
 - Starter code in each language must define a function or method named solve that matches the expected input and output.
+- Starter code must contain ONLY the "solve" function — no imports, classes, typedefs, helper functions, or main methods. All supporting code (e.g., input parsing, imports, helper functions, struct definitions, etc.) must go in the "runnable_code", not in "starter_code".
 
 INPUT & OUTPUT CONTRACT:
 - Based on the prompt, you must infer the correct input type: array, 2D array, number, string, linked list, tree, object, or none.
@@ -576,21 +577,162 @@ Return the result in this exact JSON format (include "inferred_input_shape" to i
 
 Instructions for runnable_code:
 - For every language in languages_allowed:
--   Create runnable code that contains:
--     - A placeholder for {{code}} where the user's solution will be inserted
--     - A test runner that:
--         - Parses input using the first sample test case
--         - Calls solve(...)
--         - Prints the result
--   Do NOT implement the solve function. Do NOT include any actual solution.
--   {{code}} will be replaced with student-written code at runtime.
-+   The solve function itself should NOT appear in the runnable_code.
-+   Instead, include a {{code}} placeholder exactly where the solve() function should go.
-+   This placeholder will be replaced dynamically by the student's solution.
-+   Example (JavaScript):
-+     {{code}}
-+     const input = [[1,2], [3,4]];
-+     console.log(solve(input));
+  - Create runnable code that contains:
+    - A placeholder for {{code}} where the student's code will be inserted
+    - A test runner that:
+        - Runs all sample_tests and hidden_tests
+        - Serially calls solve(...) for each test input
+        - Parses input from a raw JSON string (use json.loads, JSON.parse, etc.)
+        - Prints only the result from solve (no extra logs, no input labels, no test case index)
+  - Do NOT include the solution code.
+  - DO NOT write the solve function in the runnable code.
+  - Only include the {{code}} placeholder where student-written code will be injected.
+
+---
+
+Example (Python):
+
+import json
+
+{{code}}
+
+inputs = ['[1, 2, 3]', '[4, 5, 6]']
+for i in inputs:
+    parsed = json.loads(i)
+    print(solve(parsed))
+
+---
+
+Example (JavaScript):
+
+{{code}}
+
+const inputs = ['[1,2,3]', '[4,5,6]'];
+for (const i of inputs) {
+    const parsed = JSON.parse(i);
+    console.log(solve(parsed));
+}
+
+---
+
+Example (Java):
+
+import java.util.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+{{code}}
+
+public class Main {
+    static String[] inputs = {
+        "[1,2,3]",
+        "[4,5,6]"
+    };
+
+    public static void main(String[] args) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        for (String input : inputs) {
+            int[] arr = mapper.readValue(input, int[].class);
+            System.out.println(solve(arr));
+        }
+    }
+}
+
+---
+
+Example (C++):
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <cctype>
+using namespace std;
+
+vector<string> inputs = {"[1,2,3]", "[4,5,6]"};
+
+vector<int> parseInput(const string& input) {
+    vector<int> result;
+    string num;
+    for (char ch : input) {
+        if (isdigit(ch) || ch == '-') num += ch;
+        else if (!num.empty()) {
+            result.push_back(stoi(num));
+            num = "";
+        }
+    }
+    if (!num.empty()) result.push_back(stoi(num));
+    return result;
+}
+
+{{code}}
+
+int main() {
+    for (const auto& s : inputs) {
+        vector<int> arr = parseInput(s);
+        cout << solve(arr) << endl;
+    }
+    return 0;
+}
+
+---
+
+Example (C):
+
+- Always copy string literals to a writable buffer before using "strtok()". Do NOT modify string literals directly.
+- Use "strncpy" or "strcpy" to copy inputs to a "char buffer[256]" before tokenizing.
+- Allocate memory using "malloc" when returning arrays or linked lists from functions.
+- Free any dynamically allocated memory (arrays, nodes) inside "main()" after use.
+- Avoid printing extra logs — print only the result of "solve(...)" (one per line).
+- Assume student will write only the "solve(...)" function. Do not include it in this code.
+- Do not declare "solve(...)" with hardcoded input names — pass "int* arr, int len" or similar.
+
+---
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+char *inputs[] = {
+    "[1,2,3]",
+    "[4,5,6]"
+};
+int inputCount = 2;
+
+void parseInput(const char *inputStr, int **arr, int *len) {
+    int *result = malloc(100 * sizeof(int));
+    int count = 0;
+
+    char buffer[256];
+    strncpy(buffer, inputStr, sizeof(buffer));
+    buffer[sizeof(buffer) - 1] = '\0';  // Ensure null termination
+
+    char *token = strtok(buffer, "[,]");
+    while (token != NULL) {
+        result[count++] = atoi(token);
+        token = strtok(NULL, "[,]");
+    }
+
+    *arr = result;
+    *len = count;
+}
+
+{{code}}
+
+int main() {
+    for (int i = 0; i < inputCount; i++) {
+        int *arr = NULL;
+        int len = 0;
+        parseInput(inputs[i], &arr, &len);
+
+        // Assume student's solve returns int
+        printf("%d\n", solve(arr, len));
+
+        free(arr); // Clean up
+    }
+    return 0;
+}
+
+
 `.trim();
 
     const userPrompt = `Prompt: ${prompt}
