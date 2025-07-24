@@ -21,6 +21,10 @@ const codingAssignmentSchema = new mongoose.Schema({
     of: String,
   },
 
+  language_wrappers: {
+    type: Map,
+    of: String,
+  },
   sample_tests: [testCaseSchema],
   hidden_tests: [testCaseSchema],
   inputShape: { type: String, default: "array" }, // New field to define input structure
@@ -36,14 +40,13 @@ const codingAssignmentSchema = new mongoose.Schema({
   showHints: { type: Boolean, default: false },
   isCompleted: { type: Boolean, default: false }, // ✅ newly added
   examples: [
-  {
-    input: { type: String },
-    output: { type: String },
-  },
-],
+    {
+      input: { type: String },
+      output: { type: String },
+    },
+  ],
 
-  hints: [{ type: String }],        // Optional hints to help students
-
+  hints: [{ type: String }], // Optional hints to help students
 
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
