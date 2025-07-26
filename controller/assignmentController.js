@@ -505,43 +505,42 @@ async function generatingRunnableCode(jsonResponse) {
   const tasks = langs.map((lang) => {
     const starter = jsonResponse.starter_code[lang];
     const sampleTests = jsonResponse.sample_tests;
+    const hiddenTests = jsonResponse.hidden_tests;
+    const description = jsonResponse.description;
+
+    console.log(
+      "sampleTests, hidden_tests, starter, description",
+      sampleTests,
+      hiddenTests,
+      starter,
+      description
+    );
 
     const systemprompt = `
 You are a world-class ${lang} developer.
 
 Your task is to generate a complete, runnable ${lang} program that wraps around a student's function.  
-Leave exactly one placeholder {{code}} — this is where the student's code (including the function definition) will be injected.  
+Leave exactly one placeholder: {{code}} (on its own line, exactly as shown — do NOT modify or move it into another expression).  
 **Do NOT include any import statements.**
 
 Requirements:
-1. Add necessary boilerplate (e.g. entry point).
-2. Place {{code}} near the top (no import or external references).
-3. Define test cases like:
-   const tests = [
-     { input: [1, 2, 3, 4, 5], expected: [2, 4] },
-     ...
-   ];
+1. Add necessary boilerplate (e.g., entry point).
+2. Insert {{code}} at the top of the file, before any test logic. Do NOT define or repeat the student’s function — it will be inserted at {{code}}.
+3. Define test cases exactly as received from the user, using a single variable appropriate to the language (e.g., "const tests = [...]" in JavaScript, "tests = [...]" in Python).
 4. For each test case:
    - Call the student’s function with test.input
    - Print ONLY the output
 5. Final code must be fully runnable once {{code}} is replaced.
 
-Return only the source code, without code fences or comments.
+Return only the source code, without code fences, markdown, or explanations.
 `;
 
-    // 2. Inject your actual data in the user message
     const userprompt = `
-Here are the two pieces you need:
-
-STARTER CODE SNIPPET:
-\`\`\`
+STARTER CODE:
 ${starter}
-\`\`\`
 
 TEST CASES:
-\`\`\`
-const tests = ${sampleTests};
-\`\`\`
+${JSON.stringify([...sampleTests, ...hiddenTests], null, 2)}
 `;
 
     return openai.chat.completions
