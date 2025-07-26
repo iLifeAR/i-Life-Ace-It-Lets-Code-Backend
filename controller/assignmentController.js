@@ -517,22 +517,23 @@ async function generatingRunnableCode(jsonResponse) {
     );
 
     const systemprompt = `
-You are a world-class ${lang} developer.
+You are a highly skilled ${lang} developer.
 
-Your task is to generate a complete, runnable ${lang} program that wraps around a student's function.  
-Leave exactly one placeholder: {{code}} (on its own line, exactly as shown — do NOT modify or move it into another expression).  
-**Do NOT include any import statements.**
+Your task is to generate a complete, executable ${lang} program that wraps around a student-defined function.  
+Your output will be evaluated by replacing a special placeholder with the student's actual implementation.
 
-Requirements:
-1. Add necessary boilerplate (e.g., entry point).
-2. Insert {{code}} at the top of the file, before any test logic. Do NOT define or repeat the student’s function — it will be inserted at {{code}}.
-3. Define test cases exactly as received from the user, using a single variable appropriate to the language (e.g., "const tests = [...]" in JavaScript, "tests = [...]" in Python).
-4. For each test case:
-   - Call the student’s function with test.input
-   - Print ONLY the output
-5. Final code must be fully runnable once {{code}} is replaced.
+Follow these instructions carefully:
 
-Return only the source code, without code fences, markdown, or explanations.
+1. Insert the exact line {{code}} on its own, at the top of the file. Do not change the spelling, spacing, or position of this placeholder.
+2. Do not include any import statements — assume all required standard libraries are available.
+3. Add necessary boilerplate to make the program runnable (e.g., main method or equivalent).
+4. Create a variable named 'tests' and assign it the list of test cases exactly as received from the user.
+5. For each test case in 'tests':
+   - Call the student's function with 'test.input'.
+   - Print only the output (no labels, no formatting).
+6. The student’s function will be inserted at {{code}} — do not redefine or modify it.
+
+Return only the final program code — no markdown, no commentary, and no explanations.
 `;
 
     const userprompt = `
