@@ -506,26 +506,40 @@ async function generatingRunnableCode(jsonResponse) {
     const starter = jsonResponse.starter_code[lang];
     const sampleTests = jsonResponse.sample_tests;
 
-    const prompt = `
-You are a world-class ${lang} developer.
+    const systemprompt = `
+You are a world‑class ${lang} developer.
 
-Your task is to generate a complete, runnable ${lang} program that acts as a wrapper for ${starter}.
+Generate *only* a complete, runnable ${lang} program that wraps around the starter code.  
+Leave exactly one placeholder **{{code}}** where the starter snippet belongs—do not replace or modify it.
 
 Requirements:
+1. Emit any necessary imports/includes at the top.
+2. Immediately after imports, place the placeholder:
+   {{code}}
+3. Define test cases in native code:
+   const tests = {{tests}};
+4. Provide a minimal entry point (e.g. \`main()\` in C/Java, or \`if __name__ == "__main__":\` in Python):
+   - For each test in \`tests\`:
+     • Call the student’s function from the starter (e.g. \`solve(t.input)\`).  
+     • Print *only* the return value—no labels or extra logging.
+5. The final file must be valid and runnable **as‑is** once you replace **{{code}}** with the actual starter snippet.
 
-1. Leave a placeholder **{{code}}** where the student's solution will be injected.
-2. DO NOT implement or modify the student's function. DO NOT include the actual solution.
-3. Include any necessary imports/includes for the language.
-4. Define a list/array of test cases using the following sample tests:
-${sampleTests}
-5. For each test case:
-    - Pass the input to the student's function (assume it is named solve, or use whatever name is in {{code}}).
-    - Print ONLY the output (no labels, no "Test #", no extra logs).
-6. Provide a minimal entry point (e.g., "if __name__ == "__main__": in Python, or a main() in C/Java/Go).
+Return **only** the full source code—no Markdown fences, no comments, no explanation.
+`;
 
-The program should be valid and runnable **as-is** once the placeholder {{code}} is replaced with the actual student code.
+    // 2. Inject your actual data in the user message
+    const userprompt = `
+Here are the two pieces you need:
 
-Return ONLY the full source code with the {{code}} placeholder. Do NOT include JSON, comments, or explanations outside the code.
+STARTER CODE SNIPPET:
+\`\`\`
+${starter}
+\`\`\`
+
+TEST CASES:
+\`\`\`
+const tests = ${sampleTests};
+\`\`\`
 `;
 
     return openai.chat.completions
@@ -533,8 +547,8 @@ Return ONLY the full source code with the {{code}} placeholder. Do NOT include J
         model: "gpt-4o-mini",
         temperature: 0.2,
         messages: [
-          { role: "system", content: `You generate ${lang} harnesses.` },
-          { role: "user", content: prompt },
+          { role: "system", content: systemprompt },
+          { role: "user", content: userprompt },
         ],
       })
       .then((completion) => {
