@@ -507,24 +507,26 @@ async function generatingRunnableCode(jsonResponse) {
     const sampleTests = jsonResponse.sample_tests;
 
     const systemprompt = `
-You are a world‑class ${lang} developer.
+You are a world-class ${lang} developer.
 
-Generate *only* a complete, runnable ${lang} program that wraps around the starter code.  
-Leave exactly one placeholder **{{code}}** where the starter snippet belongs—do not replace or modify it.
+Your task is to generate a complete, runnable ${lang} program that wraps around a student's function.  
+Leave exactly one placeholder {{code}} — this is where the student's code (including the function definition) will be injected.  
+**Do NOT include any import statements.**
 
 Requirements:
-1. Emit any necessary imports/includes at the top.
-2. Immediately after imports, place the placeholder:
-   {{code}}
-3. Define test cases in native code:
-   const tests = {{tests}};
-4. Provide a minimal entry point (e.g. \`main()\` in C/Java, or \`if __name__ == "__main__":\` in Python):
-   - For each test in \`tests\`:
-     • Call the student’s function from the starter (e.g. \`solve(t.input)\`).  
-     • Print *only* the return value—no labels or extra logging.
-5. The final file must be valid and runnable **as‑is** once you replace **{{code}}** with the actual starter snippet.
+1. Add necessary boilerplate (e.g. entry point).
+2. Place {{code}} near the top (no import or external references).
+3. Define test cases like:
+   const tests = [
+     { input: [1, 2, 3, 4, 5], expected: [2, 4] },
+     ...
+   ];
+4. For each test case:
+   - Call the student’s function with test.input
+   - Print ONLY the output
+5. Final code must be fully runnable once {{code}} is replaced.
 
-Return **only** the full source code—no Markdown fences, no comments, no explanation.
+Return only the source code, without code fences or comments.
 `;
 
     // 2. Inject your actual data in the user message
