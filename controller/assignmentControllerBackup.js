@@ -499,63 +499,6 @@ const openai = new OpenAI({
 //   }
 // };
 
-async function generatingRunnableCode(jsonResponse) {
-  const langs = Object.keys(jsonResponse.starter_code);
-
-  const tasks = langs.map((lang) => {
-    const starter = jsonResponse.starter_code[lang];
-    const sampleTests = jsonResponse.sample_tests;
-
-    const prompt = `
-You are a world-class ${lang} developer.
-
-Your task is to generate a complete, runnable ${lang} program that acts as a wrapper for ${starter}.
-
-Requirements:
-
-1. Leave a placeholder **{{code}}** where the student's solution will be injected.
-2. DO NOT implement or modify the student's function. DO NOT include the actual solution.
-3. Include any necessary imports/includes for the language.
-4. Define a list/array of test cases using the following sample tests:
-${sampleTests}
-5. For each test case:
-    - Pass the input to the student's function (assume it is named solve, or use whatever name is in {{code}}).
-    - Print ONLY the output (no labels, no "Test #", no extra logs).
-6. Provide a minimal entry point (e.g., "if __name__ == "__main__": in Python, or a main() in C/Java/Go).
-
-The program should be valid and runnable **as-is** once the placeholder {{code}} is replaced with the actual student code.
-
-Return ONLY the full source code with the {{code}} placeholder. Do NOT include JSON, comments, or explanations outside the code.
-`;
-
-    return openai.chat.completions
-      .create({
-        model: "gpt-4o-mini",
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: `You generate ${lang} harnesses.` },
-          { role: "user", content: prompt },
-        ],
-      })
-      .then((completion) => {
-        let code = completion.choices[0].message.content
-          .trim()
-          .replace(/^```(\w+)?/, "")
-          .replace(/```$/, "");
-        return { lang, code };
-      });
-  });
-
-  const results = await Promise.all(tasks);
-
-  jsonResponse.runnable_code = results.reduce((acc, { lang, code }) => {
-    acc[lang] = code;
-    return acc;
-  }, {});
-
-  return jsonResponse;
-}
-
 export const generateCodingAssignment = async (req, res) => {
   try {
     const {
@@ -583,55 +526,212 @@ export const generateCodingAssignment = async (req, res) => {
     const systemPrompt = `
 You are an expert coding assignment generator.
 
-I will give you:
+You will be given:
 1. A short freeform description of what the teacher wants
 2. Difficulty level (Beginner, Intermediate, Advanced)
 3. Assignment type (function, full_program, algorithm_challenge, real_world_problem, debugging_task, refactoring_task, test_case_creation, api_task)
 4. Programming languages allowed
 5. Number of sample test cases (visible to students)
 6. Number of hidden test cases (used for evaluation)
+7. Total time limit (seconds)
+8. Total points (visible to students)
 
 Your task:
-- Try to generate exactly ONE valid assignment.
-- If you can generate it, return a JSON object with the following fields:
-  - title (short descriptive name)
-  - description (clear explanation of the problem)
-  - difficulty (must match the provided difficulty)
-  - assignment_type (must match the provided type)
-  - languages_allowed (must match the provided list)
-  - starter_code (must be an object with each allowed language as a key)
-  - sample_tests (exactly the requested number, visible to students)
-  - hidden_tests (exactly the requested number, for evaluation)
-  - time_limit (default: Beginner=1s, Intermediate=2s, Advanced=3s)
-  - memory_limit (default: Beginner=128MB, Intermediate=256MB, Advanced=512MB)
-  - tags (array of relevant topics)
+- Generate exactly ONE valid coding assignment as a JSON object.
+- Do NOT include markdown or code blocks. Only return a raw JSON object.
+- Use function-style solutions only. No input(), console.log, or stdin usage.
+- The function name MUST be exactly solve — no variations — in every language (Python, Java, C++, etc).
+- Starter code in each language must define a function or method named solve that matches the expected input and output.
+- Starter code must contain ONLY the "solve" function — no imports, classes, typedefs, helper functions, or main methods. All supporting code (e.g., input parsing, imports, helper functions, struct definitions, etc.) must go in the "runnable_code", not in "starter_code".
 
-For starter_code:
-- ALWAYS return an object where keys are the selected programming languages.
-- EACH language MUST have minimal working starter code.
-- If multiple languages are allowed, include ALL of them.
-Example:
-"starter_code": {
-  "Python": "def solve():\\n    pass",
-  "JavaScript": "function solve() {\\n    // TODO\\n}"
-}
+INPUT & OUTPUT CONTRACT:
+- Based on the prompt, you must infer the correct input type: array, 2D array, number, string, linked list, tree, object, or none.
+- Input will be passed as a parsed JSON-compatible value.
+- If the input is a tree or linked list, assume globally defined classes (TreeNode or ListNode) exist.
+- The function should accept exactly one argument based on the detected input structure.
+- The function must return the result, not print it.
+- The returned value will be automatically serialized (e.g., listToArray for ListNode, etc.).
 
-Important:
-- For debugging_task, include intentional bugs in starter_code.
-- For refactoring_task, include inefficient but correct code.
-- For test_case_creation, give a correct function and ask students to create more tests.
-- For api_task, use JSON-like input/output (no real HTTP calls).
-- Make test cases meaningful and include edge cases.
-- Do NOT include the correct solution.
-
-If you cannot generate a valid assignment for any reason, return this exact JSON:
+Return the result in this exact JSON format (include "inferred_input_shape" to indicate what input type you inferred):
 {
-  "error": true,
-  "reason": "Explain briefly why this request cannot be turned into a valid programming assignment."
+  "title": "",
+  "description": "",
+  "difficulty": "",
+  "assignment_type": "",
+  "languages_allowed": ${JSON.stringify(languagesAllowed)},
+  "starter_code": { "Python": "...", "JavaScript": "...", ... },
+  "runnable_code": { "Python": "...", "JavaScript": "...", ... },
+  "sample_tests": [ { "input": "...", "output": "...", "points": ... } ],
+  "hidden_tests": [ { "input": "...", "output": "...", "points": ... } ],
+  "time_limit": ${timeLimit},
+  "total_time_limit": ${timeLimit},
+  "total_points": ${totalPoints},
+  "memory_limit": 128,
+  "tags": [],
+  "learningObjectives": [],
+  "requirements": [],
+  "examples": [],
+  "hints": [],
+  "inferred_input_shape": ""
 }
 
-Do NOT return any text outside of JSON.
-`;
+Instructions for runnable_code:
+- For every language in languages_allowed:
+  - Create runnable code that contains:
+    - A placeholder for {{code}} where the student's code will be inserted
+    - A test runner that:
+        - Runs all sample_tests and hidden_tests
+        - Serially calls solve(...) for each test input
+        - Parses input from a raw JSON string (use json.loads, JSON.parse, etc.)
+        - Prints only the result from solve (no extra logs, no input labels, no test case index)
+  - Do NOT include the solution code.
+  - DO NOT write the solve function in the runnable code.
+  - Only include the {{code}} placeholder where student-written code will be injected.
+
+---
+
+Example (Python):
+
+import json
+
+{{code}}
+
+inputs = ['[1, 2, 3]', '[4, 5, 6]']
+for i in inputs:
+    parsed = json.loads(i)
+    print(solve(parsed))
+
+---
+
+Example (JavaScript):
+
+{{code}}
+
+const inputs = ['[1,2,3]', '[4,5,6]'];
+for (const i of inputs) {
+    const parsed = JSON.parse(i);
+    console.log(solve(parsed));
+}
+
+---
+
+Example (Java):
+
+import java.util.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+{{code}}
+
+public class Main {
+    static String[] inputs = {
+        "[1,2,3]",
+        "[4,5,6]"
+    };
+
+    public static void main(String[] args) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        for (String input : inputs) {
+            int[] arr = mapper.readValue(input, int[].class);
+            System.out.println(solve(arr));
+        }
+    }
+}
+
+---
+
+Example (C++):
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <cctype>
+using namespace std;
+
+vector<string> inputs = {"[1,2,3]", "[4,5,6]"};
+
+vector<int> parseInput(const string& input) {
+    vector<int> result;
+    string num;
+    for (char ch : input) {
+        if (isdigit(ch) || ch == '-') num += ch;
+        else if (!num.empty()) {
+            result.push_back(stoi(num));
+            num = "";
+        }
+    }
+    if (!num.empty()) result.push_back(stoi(num));
+    return result;
+}
+
+{{code}}
+
+int main() {
+    for (const auto& s : inputs) {
+        vector<int> arr = parseInput(s);
+        cout << solve(arr) << endl;
+    }
+    return 0;
+}
+
+---
+
+Example (C):
+
+- Always copy string literals to a writable buffer before using "strtok()". Do NOT modify string literals directly.
+- Use "strncpy" or "strcpy" to copy inputs to a "char buffer[256]" before tokenizing.
+- Allocate memory using "malloc" when returning arrays or linked lists from functions.
+- Free any dynamically allocated memory (arrays, nodes) inside "main()" after use.
+- Avoid printing extra logs — print only the result of "solve(...)" (one per line).
+- Assume student will write only the "solve(...)" function. Do not include it in this code.
+- Do not declare "solve(...)" with hardcoded input names — pass "int* arr, int len" or similar.
+
+---
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+char *inputs[] = {
+    "[1,2,3]",
+    "[4,5,6]"
+};
+int inputCount = 2;
+
+void parseInput(const char *inputStr, int **arr, int *len) {
+    int *result = malloc(100 * sizeof(int));
+    int count = 0;
+
+    char buffer[256];
+    strncpy(buffer, inputStr, sizeof(buffer));
+    buffer[sizeof(buffer) - 1] = '\0';  // Ensure null termination
+
+    char *token = strtok(buffer, "[,]");
+    while (token != NULL) {
+        result[count++] = atoi(token);
+        token = strtok(NULL, "[,]");
+    }
+
+    *arr = result;
+    *len = count;
+}
+
+{{code}}
+
+int main() {
+    for (int i = 0; i < inputCount; i++) {
+        int *arr = NULL;
+        int len = 0;
+        parseInput(inputs[i], &arr, &len);
+
+        // Assume student's solve returns int
+        printf("%d\n", solve(arr, len));
+
+        free(arr); // Clean up
+    }
+    return 0;
+}
+`.trim();
 
     const userPrompt = `Prompt: ${prompt}
 Difficulty: ${difficulty}
@@ -644,7 +744,7 @@ Total Points: ${totalPoints}
 `;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -654,6 +754,7 @@ Total Points: ${totalPoints}
 
     let aiResponse = completion.choices[0].message.content.trim();
 
+    // Remove accidental markdown formatting
     if (aiResponse.startsWith("```json") || aiResponse.startsWith("```")) {
       aiResponse = aiResponse.replace(/```json|```/g, "").trim();
     }
@@ -697,37 +798,26 @@ Total Points: ${totalPoints}
       Object.prototype.hasOwnProperty.call(jsonResponse, field)
     );
 
-    //     const sampleTestsValid =
-    //       Array.isArray(jsonResponse.sample_tests) &&
-    //       jsonResponse.sample_tests.length === sampleTestCount;
+    const sampleTestsValid =
+      Array.isArray(jsonResponse.sample_tests) &&
+      jsonResponse.sample_tests.length === sampleTestCount;
 
-    //     const hiddenTestsValid =
-    //       Array.isArray(jsonResponse.hidden_tests) &&
-    //       jsonResponse.hidden_tests.length === hiddenTestCount;
+    const hiddenTestsValid =
+      Array.isArray(jsonResponse.hidden_tests) &&
+      jsonResponse.hidden_tests.length === hiddenTestCount;
 
-    //     if (!hasAllFields || !sampleTestsValid || !hiddenTestsValid) {
-    //       return res.status(500).json({
-    //         error: true,
-    //         reason: `AI response missing required fields or incorrect test case count.
-    // Expected ${sampleTestCount} sample_tests and ${hiddenTestCount} hidden_tests.`,
-    //         raw: jsonResponse,
-    //       });
-    //     }
-    let enriched;
-    try {
-      enriched = await generatingRunnableCode(jsonResponse);
-    } catch (err) {
-      console.error("Error generating runnable code:", err);
+    if (!hasAllFields || !sampleTestsValid || !hiddenTestsValid) {
       return res.status(500).json({
         error: true,
-        reason: "Failed to generate runnable code harnesses.",
+        reason: `AI response missing required fields or incorrect test case count.
+Expected ${sampleTestCount} sample_tests and ${hiddenTestCount} hidden_tests.`,
+        raw: jsonResponse,
       });
     }
 
-    enriched.all_languages = ALL_LANGUAGES;
-    console.log(enriched);
+    jsonResponse.all_languages = ALL_LANGUAGES;
 
-    return res.json(enriched);
+    return res.json(jsonResponse);
   } catch (err) {
     console.error("❌ Error generating assignment:", err);
     return res.status(500).json({
