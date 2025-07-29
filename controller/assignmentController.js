@@ -661,8 +661,8 @@ Your task:
        – The test harness should print only the result of each test case (no labels or pass/fail messages)
        – Tests must print only the return value of the student’s function
        – Use correct comment syntax and escape all quotes and newlines (\" and \\n) so the string is valid JSON
-   • "sample_tests": array of sample_tests_count objects { "input": "...", "expected": "..." }
-   • "hidden_tests": array of hidden_tests_count objects { "input": "...", "expected": "..." }
+   • "sample_tests": array of sample_tests_count objects { "input": "...", "expected": "..." , "points": ... }
+   • "hidden_tests": array of hidden_tests_count objects { "input": "...", "expected": "..." , "points": ... }
 
 Formatting:
 – Return only the JSON object — no extra text or formatting
