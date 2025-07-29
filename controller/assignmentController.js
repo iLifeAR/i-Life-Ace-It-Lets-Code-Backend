@@ -773,7 +773,7 @@ export const saveCodingAssignment = async (req, res) => {
       assignment_type,
       languages_allowed,
       all_languages,
-      starter_code,
+      full_code,
       sample_tests,
       runnable_code,
       hidden_tests,
@@ -795,38 +795,37 @@ export const saveCodingAssignment = async (req, res) => {
     } = req.body;
 
     const assignmentData = {
-      title: title || "",
-      description: description || "",
-      difficulty: difficulty || "",
-      assignment_type: assignment_type || "",
-      languages_allowed: Array.isArray(languages_allowed)
-        ? languages_allowed
-        : [],
-      all_languages: Array.isArray(all_languages) ? all_languages : [],
-      starter_code: typeof starter_code === "object" ? starter_code : {},
-      sample_tests: Array.isArray(sample_tests) ? sample_tests : [],
-      hidden_tests: Array.isArray(hidden_tests) ? hidden_tests : [],
-      time_limit: time_limit || 1,
-      total_time_limit: total_time_limit || 30,
-      total_points: total_points || 100,
-      memory_limit: memory_limit || 128,
-      tags: Array.isArray(tags) ? tags : [],
-      learningObjectives: Array.isArray(learningObjectives)
-        ? learningObjectives
-        : [],
-      requirements: Array.isArray(requirements) ? requirements : [],
-      plagiarismCheck: plagiarismCheck || false,
-      allowMultipleAttempts: allowMultipleAttempts || false,
-      runnable_code:
-        typeof runnable_code === "object" && !Array.isArray(runnable_code)
-          ? runnable_code
-          : {},
-      showHints: showHints || false,
-      isCompleted: isCompleted || false,
-      inputShape: inputShape || "array",
-      createdBy: createdBy || undefined,
-      hints: Array.isArray(hints) ? hints : [],
-    };
+  title: title || "",
+  description: description || "",
+  difficulty: difficulty || "",
+  assignment_type: assignment_type || "",
+  languages_allowed: Array.isArray(languages_allowed) ? languages_allowed : [],
+  all_languages: Array.isArray(all_languages) ? all_languages : [],
+  
+  // ✅ Changed from starter_code to full_code
+  full_code: typeof full_code === "object" ? full_code : {},
+  
+  // ✅ Changed from arrays to Maps/objects for language-specific tests
+  sample_tests: typeof sample_tests === "object" && !Array.isArray(sample_tests) ? sample_tests : {},
+  hidden_tests: typeof hidden_tests === "object" && !Array.isArray(hidden_tests) ? hidden_tests : {},
+  
+  time_limit: time_limit || 1,
+  total_time_limit: total_time_limit || 30,
+  total_points: total_points || 100,
+  memory_limit: memory_limit || 128,
+  tags: Array.isArray(tags) ? tags : [],
+  learningObjectives: Array.isArray(learningObjectives) ? learningObjectives : [],
+  requirements: Array.isArray(requirements) ? requirements : [],
+  plagiarismCheck: plagiarismCheck || false,
+  allowMultipleAttempts: allowMultipleAttempts || false,
+  runnable_code: typeof runnable_code === "object" && !Array.isArray(runnable_code) ? runnable_code : {},
+  showHints: showHints || false,
+  isCompleted: isCompleted || false,
+  inputShape: inputShape || "array",
+  createdBy: createdBy || undefined,
+  hints: Array.isArray(hints) ? hints : [],
+};
+
 
     // ✅ Transform examples to proper format if they are strings
     if (Array.isArray(examples)) {
