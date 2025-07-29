@@ -595,87 +595,79 @@ export const generateCodingAssignment = async (req, res) => {
       "C",
     ];
 
+    // System prompt generator for shared assignment metadata
     const buildSystemPromptForMetadata = () => `
-You are an expert in generating coding assignments.
+You are an expert instructional designer for programming courses.
+You will receive exactly four inputs:
+1. A short, free‑form description of what the teacher wants.
+2. A difficulty level: one of "Beginner", "Intermediate", or "Advanced".
+3. An assignment type: one of:
+   • function             – implement a standalone function
+   • full_program         – build an end-to-end executable program with I/O
+   • algorithm_challenge  – design and analyze an efficient algorithm
+   • real_world_problem   – model and solve a practical scenario
+   • debugging_task       – find and correct errors in existing code
+   • refactoring_task     – improve code structure or performance
+   • test_case_creation   – author test cases for given specifications
+   • api_task             – design or consume an API endpoint
+4. A list of allowed programming languages (e.g. ["Python", "JavaScript"]).
 
-You will be provided with:
-1. A short freeform description of what the teacher wants.
-2. A difficulty level: "Beginner", "Intermediate", or "Advanced".
-3. An assignment type: one of ["function", "full_program", "algorithm_challenge", "real_world_problem", "debugging_task", "refactoring_task", "test_case_creation", "api_task"].
-4. A list of allowed programming languages.
-
-Your task is to generate the shared metadata for the coding assignment using ONLY the provided inputs.
-
-Return a valid JSON object with the following fields:
-{
-  "title": string,
-  "description": string,
-  "difficulty": string,           // Must match the provided level
-  "assignment_type": string,      // Must match the provided type
-  "languages_allowed": array,     // List of accepted languages
-  "time_limit": number,           // In seconds
-  "memory_limit": number,         // In megabytes
-  "tags": array                   // Relevant keywords (e.g., ["strings", "recursion"])
-}
+Your task: produce only one JSON object containing:
+- "title"             (string): concise assignment name
+- "description"       (string): detailed problem statement
+- "difficulty"        (string): exactly the provided level
+- "assignment_type"   (string): exactly the provided type
+- "languages_allowed" (array) : exactly the provided list
+- "time_limit"        (number): in seconds
+- "memory_limit"      (number): in megabytes
+- "tags"              (array) : relevant keywords
 
 Constraints:
-- Do NOT include full code or test cases.
-- Do NOT return any output outside of the JSON object.
-
-If a valid assignment cannot be generated, return:
-{
-  "error": true,
-  "reason": "Explain briefly why this request cannot be turned into a valid programming assignment."
-}
+- Do NOT include any code, test cases, or I/O examples.
+- Do NOT output extra keys or commentary.
+- Return strictly one valid JSON object.
+- If you cannot generate valid metadata, return:
+  {
+    "error": true,
+    "reason": "brief explanation"
+  }
 `;
 
+    // System prompt generator for language‑specific assignment content
     const buildSystemPromptForLanguageSpecifics = () => `
-You are an expert in generating language-specific content for coding assignments.
-
-You will receive shared metadata with these fields:
+You are an expert prompt engineer and language‑specific coding‑assignment generator.
+You will receive metadata with:
 - title
 - description
-- difficulty
-- assignment_type
-- languages_allowed
-- time_limit
-- memory_limit
+- difficulty           – "Biginner", "Intermediate", or "Advanced"
+- assignment_type      – one of "function", "class", "script", "module", "library"
+- time_limit           – e.g. "1s", "2s"
+- memory_limit         – e.g. "256MB"
 - tags
-- number of sample test cases (visible to students)
-- number of hidden test cases (visible to students)
+- sample_tests_count   – number of visible test cases
+- hidden_tests_count   – number of hidden test cases
+- languages_allowed    – list of allowed programming languages
 
-Your task is to generate language-specific content for the requested language.
+Your task:
+1. Select exactly one language from \`languages_allowed\`.
+2. Output exactly one JSON object with:
+   • "language": the chosen language
+   • "full_code": full source code:
+       – Include necessary imports/boilerplate
+       – Provide a placeholder (TODO/pass) where the student writes their logic
+       – Include a test harness that runs ALL sample_tests_count and hidden_tests_count test cases directly
+       – Do NOT comment out any tests — they should be active and executable
+       – Use correct comment syntax and escape all quotes and newlines (\" and \n) so the string is valid JSON
+       – The test harness should print only the result of each test case (no labels or pass/fail messages)
+       – Tests must print only the return value of the student’s function
+       – Use correct comment syntax and escape all quotes and newlines (\" and \\n) so the string is valid JSON
+   • "sample_tests": array of sample_tests_count objects { "input": "...", "expected": "..." }
+   • "hidden_tests": array of hidden_tests_count objects { "input": "...", "expected": "..." }
 
-Return ONLY a valid JSON object with:
-{
-  "language": "LanguageName",
-  "full_code": "...\n",         // Include minimal starter code in a code block with an automated test harness that logs PASS/FAIL for each sample test
-  "sample_tests": [             // Visible tests
-    {
-      "input": "...",
-      "expected": "..."
-    }
-  ],
-  "hidden_tests": [             // Visible tests
-    {
-      "input": "...",
-      "expected": "..."
-    }
-  ]
-}
-
-Requirements:
-- Include a placeholder (e.g., // write your code here or {{code}}).
-- Include a test runner that iterates over sample_tests and prints PASS or FAIL.
-- For C/C++, the test harness should be inside main() and print PASS/FAIL accordingly.
-- Do NOT return shared metadata again.
-- Do NOT include any additional text outside of the JSON.
-
-If generation is not possible, return:
-{
-  "error": true,
-  "reason": "Explain briefly why this cannot be generated."
-}
+Formatting:
+– Return only the JSON object — no extra text or formatting
+– If unable to generate valid output, return:
+  { "error": true, "reason": "brief explanation" }
 `;
 
     let metadata;
@@ -795,37 +787,49 @@ export const saveCodingAssignment = async (req, res) => {
     } = req.body;
 
     const assignmentData = {
-  title: title || "",
-  description: description || "",
-  difficulty: difficulty || "",
-  assignment_type: assignment_type || "",
-  languages_allowed: Array.isArray(languages_allowed) ? languages_allowed : [],
-  all_languages: Array.isArray(all_languages) ? all_languages : [],
-  
-  // ✅ Changed from starter_code to full_code
-  full_code: typeof full_code === "object" ? full_code : {},
-  
-  // ✅ Changed from arrays to Maps/objects for language-specific tests
-  sample_tests: typeof sample_tests === "object" && !Array.isArray(sample_tests) ? sample_tests : {},
-  hidden_tests: typeof hidden_tests === "object" && !Array.isArray(hidden_tests) ? hidden_tests : {},
-  
-  time_limit: time_limit || 1,
-  total_time_limit: total_time_limit || 30,
-  total_points: total_points || 100,
-  memory_limit: memory_limit || 128,
-  tags: Array.isArray(tags) ? tags : [],
-  learningObjectives: Array.isArray(learningObjectives) ? learningObjectives : [],
-  requirements: Array.isArray(requirements) ? requirements : [],
-  plagiarismCheck: plagiarismCheck || false,
-  allowMultipleAttempts: allowMultipleAttempts || false,
-  runnable_code: typeof runnable_code === "object" && !Array.isArray(runnable_code) ? runnable_code : {},
-  showHints: showHints || false,
-  isCompleted: isCompleted || false,
-  inputShape: inputShape || "array",
-  createdBy: createdBy || undefined,
-  hints: Array.isArray(hints) ? hints : [],
-};
+      title: title || "",
+      description: description || "",
+      difficulty: difficulty || "",
+      assignment_type: assignment_type || "",
+      languages_allowed: Array.isArray(languages_allowed)
+        ? languages_allowed
+        : [],
+      all_languages: Array.isArray(all_languages) ? all_languages : [],
 
+      // ✅ Changed from starter_code to full_code
+      full_code: typeof full_code === "object" ? full_code : {},
+
+      // ✅ Changed from arrays to Maps/objects for language-specific tests
+      sample_tests:
+        typeof sample_tests === "object" && !Array.isArray(sample_tests)
+          ? sample_tests
+          : {},
+      hidden_tests:
+        typeof hidden_tests === "object" && !Array.isArray(hidden_tests)
+          ? hidden_tests
+          : {},
+
+      time_limit: time_limit || 1,
+      total_time_limit: total_time_limit || 30,
+      total_points: total_points || 100,
+      memory_limit: memory_limit || 128,
+      tags: Array.isArray(tags) ? tags : [],
+      learningObjectives: Array.isArray(learningObjectives)
+        ? learningObjectives
+        : [],
+      requirements: Array.isArray(requirements) ? requirements : [],
+      plagiarismCheck: plagiarismCheck || false,
+      allowMultipleAttempts: allowMultipleAttempts || false,
+      runnable_code:
+        typeof runnable_code === "object" && !Array.isArray(runnable_code)
+          ? runnable_code
+          : {},
+      showHints: showHints || false,
+      isCompleted: isCompleted || false,
+      inputShape: inputShape || "array",
+      createdBy: createdBy || undefined,
+      hints: Array.isArray(hints) ? hints : [],
+    };
 
     // ✅ Transform examples to proper format if they are strings
     if (Array.isArray(examples)) {
