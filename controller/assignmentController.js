@@ -602,14 +602,9 @@ You will receive exactly four inputs:
 1. A short, free‑form description of what the teacher wants.
 2. A difficulty level: one of "Beginner", "Intermediate", or "Advanced".
 3. An assignment type: one of:
-   • function             – implement a standalone function
    • full_program         – build an end-to-end executable program with I/O
-   • algorithm_challenge  – design and analyze an efficient algorithm
-   • real_world_problem   – model and solve a practical scenario
    • debugging_task       – find and correct errors in existing code
-   • refactoring_task     – improve code structure or performance
-   • test_case_creation   – author test cases for given specifications
-   • api_task             – design or consume an API endpoint
+   • output_formatting     – fix output formatting
 4. A list of allowed programming languages (e.g. ["Python", "JavaScript"]).
 
 Your task: produce only one JSON object containing:
@@ -635,39 +630,76 @@ Constraints:
 
     // System prompt generator for language‑specific assignment content
     const buildSystemPromptForLanguageSpecifics = () => `
-You are an expert prompt engineer and language‑specific coding‑assignment generator.
-You will receive metadata with:
-- title
-- description
-- difficulty           – "Biginner", "Intermediate", or "Advanced"
-- assignment_type      – one of "function", "class", "script", "module", "library"
-- time_limit           – e.g. "1s", "2s"
-- memory_limit         – e.g. "256MB"
-- tags
-- sample_tests_count   – number of visible test cases
-- hidden_tests_count   – number of hidden test cases
-- languages_allowed    – list of allowed programming languages
+You are an expert prompt engineer and coding-assignment generator.
 
-Your task:
-1. Select exactly one language from \`languages_allowed\`.
-2. Output exactly one JSON object with:
-   • "language": the chosen language
-   • "full_code": full source code:
-       – Include necessary imports/boilerplate
-       – Provide a placeholder (TODO/pass) where the student writes their logic
-       – Include a test harness that runs ALL sample_tests_count and hidden_tests_count test cases directly
-       – Do NOT comment out any tests — they should be active and executable
-       – Use correct comment syntax and escape all quotes and newlines (\" and \n) so the string is valid JSON
-       – The test harness should print only the result of each test case (no labels or pass/fail messages)
-       – Tests must print only the return value of the student’s function
-       – Use correct comment syntax and escape all quotes and newlines (\" and \\n) so the string is valid JSON
-   • "sample_tests": array of sample_tests_count objects { "input": "...", "expected": "..." , "points": ... }
-   • "hidden_tests": array of hidden_tests_count objects { "input": "...", "expected": "..." , "points": ... }
+Input:
+A JSON metadata object with the following fields:
+- title: assignment title
+- description: detailed problem description
+- difficulty: one of "Beginner", "Intermediate", or "Advanced"
+- assignment_type: one of "full_program", "debugging_task", or "output_formatting"
+- languages_allowed: list of allowed languages (e.g. ["Python", "JavaScript"])
+- time_limit: max runtime (e.g., "1s", "2s")
+- memory_limit: max memory usage (e.g., "256MB")
+- tags: array of keywords
+- sample_tests_count: number of sample tests
+- hidden_tests_count: number of hidden tests
+- language: specific language for code generation (must match one from languages_allowed)
 
-Formatting:
-– Return only the JSON object — no extra text or formatting
-– If unable to generate valid output, return:
-  { "error": true, "reason": "brief explanation" }
+Task Rules:
+
+If assignment_type == "full_program":
+  • Under no circumstance should you include real input/output parsing, calculations, or print statements. All logic should be stubbed out or commented with TODO markers.
+  • Generate a complete program or script **scaffold** (not working code).
+  • Do NOT write actual logic — use only TODO comments and placeholders but just as guid not the actual code.
+  • Show comments for:
+      - where to parse input
+      - where to perform computation
+      - where to print or output results
+  • DO NOT include any executable logic — only structure and comments.
+  • DO NOT include instructions on how to run the program.
+  • Include all sample_tests and hidden_tests at the end of the code as comments.
+    - Format: 
+      # Sample Test Cases:
+      # Input: ...
+      # Expected Output: ...
+      # Hidden Test Cases:
+      # Input: ...
+      # Expected Output: ...
+
+If assignment_type == "debugging_task":
+  • Provide a buggy code scaffold with ATLEAST one intentional bug.
+  • Wrap the buggy region with:
+      /* === START BUGGY CODE === */
+      ...broken code...
+      /* === END BUGGY CODE === */
+  • Bug should be a simple omission or off-by-one error.
+  • Include comments listing sample & hidden test inputs and expected outputs (tests should fail initially).
+
+If assignment_type == "output_formatting":
+  • Provide a stub function or script for formatting output.
+  • Do NOT implement processing logic—use TODO placeholders.
+  • Add comment examples showing raw input vs desired formatted output.
+  • Include comments listing sample & hidden test inputs and expected outputs.
+
+Common Guidelines:
+- Use exactly the provided "language".
+- Output only one JSON object:
+  {
+    "language": "<language>",
+    "full_code": "<escaped source code>",
+    "sample_tests": [ {"input":"...","expected":"..."}, ... ],
+    "hidden_tests": [ {"input":"...","expected":"..."}, ... ]
+  }
+- In "full_code":
+  • Mark editable region:
+      # === START STUDENT CODE ===
+      ...student code or BUGGY CODE...
+      # === END STUDENT CODE ===
+  • Escape all quotes and newlines (\" and \n) for valid JSON.
+  • Do NOT include actual test harness code—only comments guiding where to run tests.
+- If generation is impossible, return:
+  {"error": true, "reason": "brief explanation"}
 `;
 
     let metadata;
