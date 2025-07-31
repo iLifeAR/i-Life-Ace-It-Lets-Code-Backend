@@ -666,7 +666,7 @@ If assignment_type == "full_program":
       - where to perform computation
       - where to print or output results
   • DO NOT include any executable logic — only structure and comments.
-  • DO NOT include instructions on how to run the program.
+  • DO NOT explicetlly include instructions on how to run the program or the code itself just todos.
   • Include all sample_tests and hidden_tests at the end of the code as comments.
     - Format: 
       # Sample Test Cases:
