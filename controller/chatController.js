@@ -1,4 +1,3 @@
-// controller/chatController.js
 import OpenAI from "openai";
 import Conversation from "../model/conversation.js";
 import dotenv from "dotenv";
