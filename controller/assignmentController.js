@@ -599,29 +599,36 @@ export const generateCodingAssignment = async (req, res) => {
     const buildSystemPromptForMetadata = () => `
 You are an expert instructional designer for programming courses.
 You will receive exactly four inputs:
-1. A short, free‑form description of what the teacher wants.
+1. A short, free-form description of what the teacher wants.
 2. A difficulty level: one of "Beginner", "Intermediate", or "Advanced".
 3. An assignment type: one of:
    • full_program         – build an end-to-end executable program with I/O
-   • debugging_task       – find and correct errors in existing code
-   • output_formatting     – fix output formatting
+   • debugging_task       – find and correct errors in existing code   
 4. A list of allowed programming languages (e.g. ["Python", "JavaScript"]).
+5. sample_tests: number of sample tests needed
+6. hidden_tests: number of hidden tests needed
 
-Your task: produce only one JSON object containing:
-- "title"             (string): concise assignment name
-- "description"       (string): detailed problem statement
-- "difficulty"        (string): exactly the provided level
-- "assignment_type"   (string): exactly the provided type
-- "languages_allowed" (array) : exactly the provided list
-- "time_limit"        (number): in seconds
-- "memory_limit"      (number): in megabytes
-- "tags"              (array) : relevant keywords
+Your task: produce only one JSON object containing these keys:
+- "title"               (string): concise assignment name
+- "description"         (string): detailed problem statement
+- "difficulty"          (string): exactly the provided level
+- "assignment_type"     (string): exactly the provided type
+- "languages_allowed"   (array) : exactly the provided list
+- "time_limit"          (number): in seconds
+- "memory_limit"        (number): in megabytes
+- "learningObjectives"  (array of strings): what the student will learn
+- "requirements"        (array of strings): prerequisites only not setup needed
+- "tags"                (array of strings): relevant keywords
+- "examples"            (array of objects): [{ "input": "...", "output": "..." }, ...] at least one example test case
+- "hints"               (array of strings): optional guidance for students
+- "sample_tests"        (array of objects): [{"input":"...","expected":"..."}, ...] based on sample_tests
+- "hidden_tests"        (array of objects): [{"input":"...","expected":"..."}, ...] based on hidden_tests
 
 Constraints:
-- Do NOT include any code, test cases, or I/O examples.
-- Do NOT output extra keys or commentary.
+- Do NOT include any code, test cases, or I/O examples outside of the fields above.
+- Do NOT output extra keys or any commentary.
 - Return strictly one valid JSON object.
-- If you cannot generate valid metadata, return:
+- If you cannot generate valid metadata, return exactly:
   {
     "error": true,
     "reason": "brief explanation"
@@ -645,13 +652,15 @@ A JSON metadata object with the following fields:
 - sample_tests_count: number of sample tests
 - hidden_tests_count: number of hidden tests
 - language: specific language for code generation (must match one from languages_allowed)
+- sample_tests: [ {"input":"...","expected":"..."}, ... ],
+- hidden_tests: [ {"input":"...","expected":"..."}, ... ],
 
 Task Rules:
 
 If assignment_type == "full_program":
   • Under no circumstance should you include real input/output parsing, calculations, or print statements. All logic should be stubbed out or commented with TODO markers.
   • Generate a complete program or script **scaffold** (not working code).
-  • Do NOT write actual logic — use only TODO comments and placeholders but just as guid not the actual code.
+  • Do NOT write actual logic — use only TODO comments and placeholders but just as guide, not actual code.
   • Show comments for:
       - where to parse input
       - where to perform computation
@@ -665,31 +674,26 @@ If assignment_type == "full_program":
       # Expected Output: ...
       # Hidden Test Cases:
       # Input: ...
-      # Expected Output: ...
+      # Input: ...
 
 If assignment_type == "debugging_task":
-  • Provide a buggy code scaffold with ATLEAST one intentional bug.
+  • Provide a buggy code scaffold with AT LEAST one intentional bug.
   • Wrap the buggy region with:
       /* === START BUGGY CODE === */
       ...broken code...
       /* === END BUGGY CODE === */
   • Bug should be a simple omission or off-by-one error.
-  • Include comments listing sample & hidden test inputs and expected outputs (tests should fail initially).
-
-If assignment_type == "output_formatting":
-  • Provide a stub function or script for formatting output.
-  • Do NOT implement processing logic—use TODO placeholders.
-  • Add comment examples showing raw input vs desired formatted output.
-  • Include comments listing sample & hidden test inputs and expected outputs.
+  • Do NOT specify line numbers or explicitly point out where the bug lives.
+  • Include comments listing sample & hidden test cases:
+      - Sample Test Cases should show both inputs and expected outputs.
+      - Hidden Test Cases should show only inputs (no expected outputs).
 
 Common Guidelines:
 - Use exactly the provided "language".
 - Output only one JSON object:
   {
     "language": "<language>",
-    "full_code": "<escaped source code>",
-    "sample_tests": [ {"input":"...","expected":"..."}, ... ],
-    "hidden_tests": [ {"input":"...","expected":"..."}, ... ]
+    "full_code": "<escaped source code>",    
   }
 - In "full_code":
   • Mark editable region:
@@ -697,10 +701,18 @@ Common Guidelines:
       ...student code or BUGGY CODE...
       # === END STUDENT CODE ===
   • Escape all quotes and newlines (\" and \n) for valid JSON.
+  • Use only the given test cases and hidden tests from the metadata.
   • Do NOT include actual test harness code—only comments guiding where to run tests.
+  
 - If generation is impossible, return:
   {"error": true, "reason": "brief explanation"}
 `;
+
+    // If assignment_type == "output_formatting":
+    //   • Provide a stub function or script for formatting output.
+    //   • Do NOT implement processing logic—use TODO placeholders.
+    //   • Add comment examples showing raw input vs desired formatted output.
+    //   • Include comments listing sample & hidden test inputs and expected outputs.
 
     let metadata;
     try {
@@ -710,7 +722,7 @@ Common Guidelines:
           { role: "system", content: buildSystemPromptForMetadata() },
           {
             role: "user",
-            content: `Prompt: ${prompt}\nDifficulty: ${difficulty}\nAssignment Type: ${assignmentType}\nLanguages Allowed: ${JSON.stringify(
+            content: `Prompt: ${prompt}\nDifficulty: ${difficulty}\nAssignment Type: ${assignmentType}\nSample Tests: ${sampleTestCount}\nHidden Tests: ${hiddenTestCount}\nLanguages Allowed: ${JSON.stringify(
               languagesAllowed
             )}`,
           },
@@ -732,8 +744,6 @@ Common Guidelines:
     }
 
     metadata.full_code = {};
-    metadata.sample_tests = {};
-    metadata.hidden_tests = {};
 
     const assignmentPromises = languagesAllowed.map(async (lang) => {
       const completion = await openai.chat.completions.create({
@@ -742,9 +752,7 @@ Common Guidelines:
           { role: "system", content: buildSystemPromptForLanguageSpecifics() },
           {
             role: "user",
-            content: `Metadata: ${JSON.stringify(
-              metadata
-            )}\nLanguage: ${lang}\nSample Tests: ${sampleTestCount}\nHidden Tests: ${hiddenTestCount}`,
+            content: `Metadata: ${JSON.stringify(metadata)}\nLanguage: ${lang}`,
           },
         ],
         temperature: 0.3,
@@ -757,10 +765,7 @@ Common Guidelines:
       const langData = JSON.parse(aiResponse);
       if (langData.error) throw new Error(langData.reason);
 
-      // Merge into metadata
       metadata.full_code[lang] = langData.full_code;
-      metadata.sample_tests[lang] = langData.sample_tests;
-      metadata.hidden_tests[lang] = langData.hidden_tests;
 
       console.log(
         `[generateCodingAssignment] Generated for ${lang}:`,
